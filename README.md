@@ -1,6 +1,6 @@
-# Held Up
+# Pulumi in Practice
 
-Public static blog (**Held Up**) about adopting Pulumi safely — especially stopping faulty deletes — plus comparisons to Terraform/CDK and migration paths from existing stacks.
+Public static blog about adopting Pulumi safely — especially stopping faulty deletes — plus comparisons to Terraform/CDK and migration paths from existing stacks.
 
 **Live site (after GitHub Pages is enabled):** https://pramodshanmugam.github.io/pulumi-blog/
 
