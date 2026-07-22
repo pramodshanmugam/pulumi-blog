@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Why prefer Pulumi over Terraform and CDK — Pulumi Blog</title>
+    <meta
+      name="description"
+      content="Why Pulumi wins for AWS, Azure, and Kubernetes compared with Terraform and AWS CDK — including delete-safety controls."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="../">Pulumi <span>Blog</span></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="../">Home</a>
+          <a href="pulumi-protect.html">Protect</a>
+          <a href="why-pulumi.html" aria-current="page">Why Pulumi</a>
+          <a href="migrate-to-pulumi.html">Migrate</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="post-page wrap">
+      <header class="post-header">
+        <p class="post-header__meta">Comparison</p>
+        <h1>Why prefer Pulumi over Terraform and CDK</h1>
+        <p>
+          One programming model for AWS deployments, Azure deployments, and a
+          Kubernetes cluster on a home laptop — without trading away the
+          guardrails platform teams demand.
+        </p>
+      </header>
+
+      <article class="prose">
+        <p>
+          I use Pulumi day to day for <strong>AWS</strong>,
+          <strong>Azure</strong>, and <strong>Kubernetes on a home laptop</strong>.
+          That mix is exactly where tool sprawl hurts: Terraform for one cloud,
+          CDK for another, Helm charts or raw manifests for the cluster, and a
+          different review story for each. Pulumi collapses that into one engine,
+          one preview, and one set of safety options.
+        </p>
+
+        <h2>Real languages instead of a DSL</h2>
+        <p>
+          Terraform’s HCL is excellent at declaring cloud resources, but loops,
+          conditionals, and shared abstractions stay inside a DSL. AWS CDK brings
+          real languages — then synthesizes to CloudFormation, so the runtime
+          truth is still a template pipeline.
+        </p>
+        <p>
+          Pulumi programs are ordinary TypeScript, Python, Go, C#, or Java. You
+          get IDEs, packages, tests, and the same control flow you already use
+          for applications. For a home k8s lab that grows into something more
+          serious, being able to share helpers between an Azure stack and a
+          local cluster matters more than another YAML dialect.
+        </p>
+
+        <h2>One model across AWS, Azure, and Kubernetes</h2>
+        <p>
+          CDK is strongest inside AWS. Terraform covers many providers, but each
+          environment still tends to grow its own module conventions. With
+          Pulumi I keep the same workflow:
+        </p>
+        <ul>
+          <li>AWS accounts for production-shaped workloads</li>
+          <li>Azure subscriptions for other services and identity</li>
+          <li>A local Kubernetes cluster for fast iteration</li>
+        </ul>
+        <p>
+          Providers change; <code>pulumi preview</code>, stack config, secrets,
+          and resource options do not. That consistency is the practical reason
+          to prefer it when you are not all-in on a single cloud.
+        </p>
+
+        <h2>Preview is the first delete fence</h2>
+        <p>
+          Reviewers often fear that “real code” means a bad loop can wipe prod.
+          The first answer is cultural and mechanical: never apply without a
+          reviewed preview. Pulumi’s diff makes creates, updates, replacements,
+          and deletes explicit before anything runs.
+        </p>
+        <div class="callout">
+          <strong>Org approval note:</strong> treat CI preview on every PR as
+          mandatory. Faulty deletes are almost always “we skipped the diff,” not
+          “the engine invented a delete.”
+        </div>
+
+        <h2>Delete safety compared with Terraform and CDK</h2>
+        <p>
+          Terraform’s <code>lifecycle { prevent_destroy = true }</code> and
+          CloudFormation / CDK deletion policies are real protections. Pulumi’s
+          equivalent is the <code>protect</code> resource option — and it fits
+          the same mental model platform teams already accept:
+        </p>
+        <ul>
+          <li>
+            Mark stateful resources (databases, disks, key vaults, persistent
+            volumes) with <code>protect: true</code>
+          </li>
+          <li>
+            Drive that flag from stack config so prod protects and ephemeral
+            stacks can still be destroyed
+          </li>
+          <li>
+            Use stack transforms to apply protection broadly in production
+          </li>
+          <li>
+            Layer Policy as Code if the org wants a central rule: “critical
+            types may not be unprotected”
+          </li>
+        </ul>
+        <p>
+          The longer walkthrough — including unprotect workflow and reviewer
+          checklist — is in
+          <a href="pulumi-protect.html">How Pulumi protect stops faulty deletes</a>.
+        </p>
+
+        <h2>Where Terraform or CDK can still win</h2>
+        <p>
+          Be honest in an ADR. Large Terraform estates with mature modules may
+          not need a rewrite tomorrow. Teams deep in CDK constructs may prefer
+          the Pulumi CDK adapter or a staged import. Preferring Pulumi does not
+          require pretending other tools are empty. It means one engine for
+          multi-cloud plus Kubernetes, with delete controls that survive org
+          review.
+        </p>
+
+        <h2>Bottom line</h2>
+        <p>
+          I prefer Pulumi because the same program style covers AWS, Azure, and
+          home-lab Kubernetes, the preview is trustworthy, and
+          <code>protect</code> gives a clear answer when someone asks: “What
+          stops a faulty delete?” That question — more than syntax preference —
+          is usually what decides approval.
+        </p>
+      </article>
+
+      <nav class="post-nav" aria-label="Post">
+        <a href="../">← Home</a>
+        <a href="pulumi-protect.html">Next: Pulumi protect →</a>
+      </nav>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>
+          © <span data-year></span> Pulumi Blog ·
+          <a href="https://github.com/pramodshanmugam/pulumi-blog">Source on GitHub</a>
+        </p>
+      </div>
+    </footer>
+    <script src="../assets/js/main.js"></script>
+  </body>
+</html>

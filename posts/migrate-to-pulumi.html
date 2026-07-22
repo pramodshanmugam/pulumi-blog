@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Import Terraform, CDK, or CloudFormation into Pulumi — Pulumi Blog</title>
+    <meta
+      name="description"
+      content="Convert and import existing Terraform, AWS CDK, or CloudFormation stacks into Pulumi with protect-on-import defaults and a clean preview."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="../">Pulumi <span>Blog</span></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="../">Home</a>
+          <a href="pulumi-protect.html">Protect</a>
+          <a href="why-pulumi.html">Why Pulumi</a>
+          <a href="migrate-to-pulumi.html" aria-current="page">Migrate</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="post-page wrap">
+      <header class="post-header">
+        <p class="post-header__meta">Migration</p>
+        <h1>Import Terraform, CDK, or CloudFormation into Pulumi</h1>
+        <p>
+          Move existing stacks without downtime: convert code, import state,
+          verify a clean preview — and keep protection on until cutover is
+          deliberate.
+        </p>
+      </header>
+
+      <article class="prose">
+        <p>
+          Adoption stalls when teams hear “rewrite everything.” You do not have
+          to. Pulumi can adopt infrastructure that already exists under
+          Terraform, AWS CDK, or CloudFormation, then keep managing it from the
+          same workflow you use for Azure and Kubernetes stacks.
+        </p>
+        <p>
+          The safety theme from
+          <a href="pulumi-protect.html">protect</a> applies here too: imports
+          should land protected so a half-finished conversion cannot unlock a
+          mass delete.
+        </p>
+
+        <h2>Shared checklist</h2>
+        <ul class="checklist">
+          <li>Convert or generate Pulumi code for the stack</li>
+          <li>Import existing resources into Pulumi state (no cloud changes)</li>
+          <li>
+            Run <code>pulumi preview</code> until it shows <strong>no changes</strong>
+          </li>
+          <li>Keep <code>protect</code> until refactor and review are done</li>
+          <li>Only then unprotect and change resources on purpose</li>
+          <li>Migrate environment by environment (dev → staging → prod)</li>
+        </ul>
+
+        <h2>From Terraform</h2>
+        <p>
+          Two jobs: turn HCL into a Pulumi program, and adopt the live resources
+          from Terraform state.
+        </p>
+        <h3>Convert code</h3>
+        <pre><code># from a directory of .tf files
+pulumi convert --from terraform --language typescript --out ../pulumi-app</code></pre>
+        <h3>Import state</h3>
+        <pre><code>pulumi import --from terraform ./terraform.tfstate</code></pre>
+        <div class="callout">
+          <strong>Deletion safety:</strong> resources imported from Terraform
+          state are marked <strong>protected</strong>. That is intentional — you
+          can fix the generated program while the engine refuses accidental
+          deletes. Unprotect only after preview is clean and reviewers agree.
+        </div>
+        <p>
+          Alternatives when the estate is large: Pulumi Neo for assisted
+          zero-downtime migration, or a state-first path with
+          <code>pulumi-terraform-migrate</code> plus code conversion. You can
+          also keep coexisting with Terraform by reading a
+          <code>.tfstate</code> for references during a gradual move.
+        </p>
+
+        <h2>From AWS CDK</h2>
+        <p>
+          CDK apps deploy through CloudFormation. Treat each CDK/CloudFormation
+          stack as a migration unit — partial moves are risky while CFN still
+          owns the stack.
+        </p>
+        <ol>
+          <li>Synthesize the CDK app (<code>cdk synth</code> → <code>cdk.out</code>)</li>
+          <li>
+            Convert with Neo (recommended) or
+            <code>cdk2pulumi</code> against the cloud assembly
+          </li>
+          <li>
+            Import live resources with Neo or the
+            <code>cdk-importer</code> tool
+          </li>
+          <li>Confirm <code>pulumi preview</code> is empty before cutting over</li>
+        </ol>
+        <pre><code># example: generate import mappings / import via cdk-importer
+pulumi plugin install tool cdk-importer
+pulumi plugin run cdk-importer -- -stack MyCdkStack
+
+pulumi preview   # expect zero changes before you rely on Pulumi alone</code></pre>
+        <p>
+          If you need a softer landing, the Pulumi CDK adapter can run CDK
+          constructs on the Pulumi engine first; full conversion can wait until
+          the team is ready.
+        </p>
+
+        <h2>From CloudFormation</h2>
+        <p>
+          Pure CloudFormation stacks carry a complete inventory of logical IDs
+          and physical resources. Neo (and related CFN migration guides) read
+          that inventory, generate Pulumi code, and import without tearing down
+          the stack.
+        </p>
+        <ul>
+          <li>Migrate whole stacks, not random subsets still updated by CFN</li>
+          <li>Prove zero drift with preview after import</li>
+          <li>
+            Disable or remove the old CFN update path only after Pulumi owns
+            the resources
+          </li>
+        </ul>
+
+        <h2>Azure and Kubernetes neighbors</h2>
+        <p>
+          Even when the legacy stack is AWS-only CDK or Terraform AWS, the
+          destination can sit beside Azure Pulumi stacks and a home-lab
+          Kubernetes project under one CLI and one review culture. Import does
+          not force a big-bang multi-cloud rewrite — it lets you stop the bleed
+          on the stack you are migrating first.
+        </p>
+
+        <h2>What “ease” actually means</h2>
+        <p>
+          Ease is not skipping review. Ease is: automated convert + import,
+          protected resources by default, and a preview that proves you changed
+          nothing in the cloud before you change anything. That is the path that
+          survives the same org question as greenfield Pulumi —
+          <em>how do we avoid faulty deletes?</em> — while you leave Terraform,
+          CDK, or CloudFormation behind on purpose.
+        </p>
+      </article>
+
+      <nav class="post-nav" aria-label="Post">
+        <a href="pulumi-protect.html">← Pulumi protect</a>
+        <a href="../">Home →</a>
+      </nav>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>
+          © <span data-year></span> Pulumi Blog ·
+          <a href="https://github.com/pramodshanmugam/pulumi-blog">Source on GitHub</a>
+        </p>
+      </div>
+    </footer>
+    <script src="../assets/js/main.js"></script>
+  </body>
+</html>

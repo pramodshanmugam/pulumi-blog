@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How Pulumi protect stops faulty deletes — Pulumi Blog</title>
+    <meta
+      name="description"
+      content="Answer the org approval concern: use Pulumi protect, stack transforms, and deliberate unprotect to stop faulty deletes across AWS, Azure, and Kubernetes."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="../">Pulumi <span>Blog</span></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="../">Home</a>
+          <a href="pulumi-protect.html" aria-current="page">Protect</a>
+          <a href="why-pulumi.html">Why Pulumi</a>
+          <a href="migrate-to-pulumi.html">Migrate</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="post-page wrap">
+      <header class="post-header">
+        <p class="post-header__meta">Featured · Org approval</p>
+        <h1>How Pulumi protect stops faulty deletes</h1>
+        <p>
+          The question every platform team asks before approving Pulumi — and
+          the controls that make “faulty delete” a blocked operation instead of
+          an outage.
+        </p>
+      </header>
+
+      <article class="prose">
+        <p>
+          When I tried to get Pulumi approved, the loudest concern was not
+          licensing or language choice. It was <strong>faulty deletes</strong>:
+          if infrastructure is real code, what stops a rename, a bad refactor,
+          or a mistaken stack update from destroying a database, a disk, or a
+          cluster?
+        </p>
+        <p>
+          That fear is fair. IaC engines delete resources that disappear from
+          desired state. Pulumi’s answer is not “trust the author.” It is
+          <code>protect</code>, deliberate unprotect, preview discipline, and
+          optional policy — the same layered approach you would demand for AWS,
+          Azure, or a Kubernetes workload on a home lab that later becomes
+          shared infrastructure.
+        </p>
+
+        <h2>The failure mode</h2>
+        <p>A typical incident path looks like this:</p>
+        <ol>
+          <li>Someone renames a resource or removes it while “cleaning up.”</li>
+          <li>
+            <code>pulumi up</code> plans a delete (or a replace, which deletes
+            then creates).
+          </li>
+          <li>
+            Without a fence, the provider API destroys the cloud or cluster
+            object.
+          </li>
+        </ol>
+        <p>
+          Stateful examples that should almost never be casually deletable:
+          RDS / Azure SQL, persistent volumes, Key Vaults / KMS keys, storage
+          accounts with retention data, production VPCs / VNets.
+        </p>
+
+        <h2>Mark resources with <code>protect: true</code></h2>
+        <p>
+          The <code>protect</code> resource option tells the Pulumi engine: if
+          this update would delete (or replace) the resource, <strong>fail the
+          deployment instead</strong>. Nothing is destroyed until protection is
+          removed on purpose.
+        </p>
+
+        <h3>TypeScript</h3>
+        <pre><code>import * as aws from "@pulumi/aws";
+import * as pulumi from "@pulumi/pulumi";
+
+const config = new pulumi.Config();
+const protect = config.getBoolean("protect") ?? false;
+
+const bucket = new aws.s3.Bucket(
+  "app-data",
+  { forceDestroy: false },
+  { protect },
+);</code></pre>
+
+        <h3>Python</h3>
+        <pre><code>import pulumi
+from pulumi_azure_native import storage
+
+config = pulumi.Config()
+protect = config.get_bool("protect") or False
+
+account = storage.StorageAccount(
+    "appdata",
+    resource_group_name=resource_group.name,
+    sku=storage.SkuArgs(name=storage.SkuName.STANDARD_LRS),
+    kind=storage.Kind.STORAGE_V2,
+    opts=pulumi.ResourceOptions(protect=protect),
+)</code></pre>
+
+        <div class="callout">
+          <strong>Prod pattern:</strong> set <code>protect: true</code> in
+          production stack config and leave it false (or unset) for disposable
+          stacks. Same program, different blast radius.
+        </div>
+
+        <h2>Inheritance on components</h2>
+        <p>
+          Setting <code>protect: true</code> on a component resource propagates
+          to child custom resources. That is useful for Azure resource groups,
+          AWS VPCs packaged as components, or a Kubernetes app component that
+          owns deployments, services, and PVCs — protect the parent when the
+          whole unit must not vanish.
+        </p>
+        <p>
+          Override a child with <code>protect: false</code> only when that child
+          is intentionally disposable under a protected parent.
+        </p>
+
+        <h2>Blanket protection with stack transforms</h2>
+        <p>
+          There is no single “protect everything” flag, but a stack transform
+          can set <code>protect</code> on every resource as it registers —
+          ideal for production stacks across AWS and Azure without sprinkling
+          options on each declaration:
+        </p>
+        <pre><code>import * as pulumi from "@pulumi/pulumi";
+
+const config = new pulumi.Config();
+if (config.getBoolean("protect")) {
+  pulumi.runtime.registerStackTransformation((args) => ({
+    props: args.props,
+    opts: pulumi.mergeOptions(args.opts, { protect: true }),
+  }));
+}</code></pre>
+
+        <h2>Unprotect is a two-step, intentional act</h2>
+        <p>To delete a protected resource you must first clear protection:</p>
+        <ol>
+          <li>
+            Set <code>protect: false</code> in code/config and run
+            <code>pulumi up</code>, <em>or</em> run
+            <code>pulumi state unprotect &lt;urn&gt;</code>
+          </li>
+          <li>
+            Run a following update that actually deletes the resource
+          </li>
+        </ol>
+        <p>
+          That two-step path is what you show reviewers: destruction cannot be
+          a single accidental click after a bad merge.
+        </p>
+
+        <h2>CLI <code>pulumi state protect</code> caveats</h2>
+        <p>
+          <code>pulumi state protect</code> flips the protect bit in state. If
+          the program does not also set <code>protect: true</code>, the next
+          successful update can clear that bit again. Treat CLI protect as a
+          temporary fence; encode the option in the program or transform for
+          durable policy.
+        </p>
+
+        <h2><code>protect</code> vs <code>retainOnDelete</code></h2>
+        <ul>
+          <li>
+            <strong>protect</strong> — block the delete; keep managing the
+            resource in Pulumi.
+          </li>
+          <li>
+            <strong>retainOnDelete</strong> — allow Pulumi to drop the resource
+            from state without calling the provider delete (orphans the cloud
+            object on purpose).
+          </li>
+        </ul>
+        <p>
+          Use protect for “never destroy by accident.” Use retainOnDelete for
+          “stop managing this without wiping it.”
+        </p>
+
+        <h2>Second fence: Policy as Code</h2>
+        <p>
+          For orgs that want a central guarantee, CrossGuard / Policy as Code
+          can deny updates that would leave critical resource types unprotected,
+          or deny deletes of tagged production resources. Pair that with
+          mandatory CI previews.
+        </p>
+
+        <h2>Reviewer checklist (paste into an ADR)</h2>
+        <ul class="checklist">
+          <li>
+            Production stacks set <code>protect: true</code> via config or a
+            stack transform
+          </li>
+          <li>
+            Databases, disks, keys, and networking foundations are explicitly
+            protected
+          </li>
+          <li>CI runs <code>pulumi preview</code> on every change; deletes are reviewed</li>
+          <li>
+            Unprotect requires a separate change (or break-glass
+            <code>state unprotect</code>) before destroy
+          </li>
+          <li>
+            Optional: policy pack enforces protect on critical types
+          </li>
+          <li>
+            Same rules apply whether the stack targets AWS, Azure, or Kubernetes
+          </li>
+        </ul>
+
+        <p>
+          Faulty deletes are a process and defaults problem. Pulumi gives you
+          the same class of control Terraform’s <code>prevent_destroy</code>
+          and CloudFormation deletion policies give — expressed as a first-class
+          resource option you can apply consistently everywhere you already run
+          Pulumi.
+        </p>
+      </article>
+
+      <nav class="post-nav" aria-label="Post">
+        <a href="why-pulumi.html">← Why Pulumi</a>
+        <a href="migrate-to-pulumi.html">Next: Migrate existing stacks →</a>
+      </nav>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>
+          © <span data-year></span> Pulumi Blog ·
+          <a href="https://github.com/pramodshanmugam/pulumi-blog">Source on GitHub</a>
+        </p>
+      </div>
+    </footer>
+    <script src="../assets/js/main.js"></script>
+  </body>
+</html>

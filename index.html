@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pulumi Blog — Safe infrastructure as code</title>
+    <meta
+      name="description"
+      content="Notes on preferring Pulumi for AWS, Azure, and Kubernetes — and how protect stops faulty deletes."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="./">Pulumi <span>Blog</span></a>
+        <nav class="nav" aria-label="Primary">
+          <a href="./" aria-current="page">Home</a>
+          <a href="posts/pulumi-protect.html">Protect</a>
+          <a href="posts/why-pulumi.html">Why Pulumi</a>
+          <a href="posts/migrate-to-pulumi.html">Migrate</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero wrap">
+        <div class="hero__glow" aria-hidden="true"></div>
+        <div class="hero__copy">
+          <h1 class="hero__brand">Pulumi <em>Blog</em></h1>
+          <p class="hero__lede">
+            One toolchain for AWS, Azure, and home-lab Kubernetes — with explicit
+            controls so a bad update cannot quietly delete production.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn--primary" href="posts/pulumi-protect.html"
+              >Read: stop faulty deletes</a
+            >
+            <a class="btn btn--ghost" href="#posts">Browse posts</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section wrap" id="posts">
+        <h2 class="section__title">Posts</h2>
+        <p class="section__lede">
+          Written from day-to-day use across clouds and clusters — and from the
+          approval conversations where deletion safety decides the tool.
+        </p>
+        <ul class="post-list">
+          <li data-reveal>
+            <a class="post-link" href="posts/pulumi-protect.html">
+              <div class="post-link__meta">
+                Featured <span class="featured-mark">Org approval</span>
+              </div>
+              <h3 class="post-link__title">
+                How Pulumi protect stops faulty deletes
+              </h3>
+              <p class="post-link__excerpt">
+                The concern that blocks adoption — and the resource option,
+                transforms, and unprotect workflow that answer it.
+              </p>
+            </a>
+          </li>
+          <li data-reveal>
+            <a class="post-link" href="posts/why-pulumi.html">
+              <div class="post-link__meta">Comparison</div>
+              <h3 class="post-link__title">
+                Why prefer Pulumi over Terraform and CDK
+              </h3>
+              <p class="post-link__excerpt">
+                Real languages, one model for AWS and Azure, Kubernetes at home
+                and in the cloud — without giving up delete guardrails.
+              </p>
+            </a>
+          </li>
+          <li data-reveal>
+            <a class="post-link" href="posts/migrate-to-pulumi.html">
+              <div class="post-link__meta">Migration</div>
+              <h3 class="post-link__title">
+                Import Terraform, CDK, or CloudFormation into Pulumi
+              </h3>
+              <p class="post-link__excerpt">
+                Convert code, import state, verify a clean preview — and keep
+                resources protected until the cutover is deliberate.
+              </p>
+            </a>
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>
+          © <span data-year></span> Pulumi Blog ·
+          <a href="https://github.com/pramodshanmugam/pulumi-blog">Source on GitHub</a>
+        </p>
+      </div>
+    </footer>
+    <script src="assets/js/main.js"></script>
+  </body>
+</html>
